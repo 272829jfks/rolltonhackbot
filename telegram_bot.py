@@ -136,6 +136,8 @@ T = {
         "admin_ok": "Admin OK. Commands:\n/tokens — list\n/stats — count\n/broadcast text — message all known users (session only)",
         "admin_bad": "Wrong admin token.",
         "btn_admin": "I am admin",
+        "btn_help": "Помощь",   # en: "Help"
+"help": "По всем вопросам: Telegram @rolltonvsky",
     },
     "ru": {
         "lang": "Выбери язык / Choose language:",
@@ -158,6 +160,8 @@ T = {
         "admin_ok": "Админ OK. Команды:\n/tokens — список\n/stats — число\n/broadcast текст",
         "admin_bad": "Неверный токен админа.",
         "btn_admin": "Я админ",
+        "btn_help": "Помощь",   # en: "Help"
+"help": "По всем вопросам: Telegram @rolltonvsky",
     },
 }
 
@@ -215,6 +219,7 @@ def main_kb(u):
         "keyboard": [
             [{"text": tr(u, "btn_buy")}],
             [{"text": tr(u, "btn_admin")}],
+            [{"text": tr(u, "btn_help")}],
         ],
         "resize_keyboard": True,
     }
@@ -413,6 +418,24 @@ def handle_message(msg):
     if u.get("step") == "done":
         send(chat, "Токен уже выдан. /start — сначала.")
         return
+    
+    if text == tr(u, "btn_help") or text.lower() in ("помощь", "help"):
+    send(chat, tr(u, "help"), reply_markup=main_kb(u))
+    return
+
+    if text.strip() == ADMIN_TOKEN:
+    ADMINS.add(uid)
+    u["step"] = "hello"
+    u["paid"] = True
+    send(chat, tr(u, "admin_ok"), reply_markup=main_kb(u))
+    # тест выдачи:
+    deliver(chat, u, uid, "windows")  # или спроси устройство
+    return
+
+    if uid in ADMINS:
+    u["paid"] = True
+    ask_device(chat, u)
+    return
 
     # fallback
     if u.get("step") == "hello":
