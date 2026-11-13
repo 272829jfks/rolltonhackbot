@@ -77,6 +77,8 @@ def math_captcha():
     return f"{a}-{b}", a - b
 
 
+# Bank tips — real auto SBP-link to personal card is impossible without merchant.
+# We give clear transfer instructions per bank.
 BANK_HELP = {
     "sber": (
         "🟢 <b>Сбербанк</b>\n"
@@ -134,6 +136,8 @@ T = {
         "admin_ok": "Admin OK. Commands:\n/tokens — list\n/stats — count\n/broadcast text — message all known users (session only)",
         "admin_bad": "Wrong admin token.",
         "btn_admin": "I am admin",
+        "btn_help": "Help",
+        "help": "For any questions contact @rolltonvsky",
     },
     "ru": {
         "lang": "Выбери язык / Choose language:",
@@ -156,6 +160,8 @@ T = {
         "admin_ok": "Админ OK. Команды:\n/tokens — список\n/stats — число\n/broadcast текст",
         "admin_bad": "Неверный токен админа.",
         "btn_admin": "Я админ",
+        "btn_help": "Помощь",
+        "help": "По всем вопросам писать Telegram @rolltonvsky",
     },
 }
 
@@ -212,6 +218,7 @@ def main_kb(u):
     return {
         "keyboard": [
             [{"text": tr(u, "btn_buy")}],
+            [{"text": tr(u, "btn_help")}],
             [{"text": tr(u, "btn_admin")}],
         ],
         "resize_keyboard": True,
@@ -233,6 +240,13 @@ def handle_message(msg):
         if text == "/stats":
             d = load_tokens()
             send(chat, f"tokens: {len(d.get('tokens') or [])}\nissued: {len(d.get('issued') or [])}\nsession users: {len(USERS)}")
+            return
+        if text == "/customers":
+            data = load_tokens()
+            msg = "Список покупок:\n"
+            for item in data.get("issued", []):
+                msg += f"UID: {item['uid']} | Device: {item['device']}\n"
+            send(chat, msg[:3500])
             return
         if text.startswith("/broadcast "):
             body = text.split(maxsplit=1)[1]
@@ -312,13 +326,21 @@ def handle_message(msg):
         if text.strip() == ADMIN_TOKEN:
             ADMINS.add(uid)
             u["step"] = "hello"
+            u["paid"] = True
             send(chat, tr(u, "admin_ok"), reply_markup=main_kb(u))
         else:
             u["step"] = "hello"
             send(chat, tr(u, "admin_bad"), reply_markup=main_kb(u))
         return
 
+    if text == tr(u, "btn_help") or text.lower() in ("помощь", "help"):
+        send(chat, tr(u, "help"), reply_markup=main_kb(u))
+        return
+
     if u.get("step") in ("hello", "buy"):
+        if uid in ADMINS:  # Админу сразу даем выбор устройства
+            ask_device(chat, u)
+            return
         if text == tr(u, "btn_buy") or "куп" in text.lower() or "buy" in text.lower():
             u["step"] = "pay"
             send(
